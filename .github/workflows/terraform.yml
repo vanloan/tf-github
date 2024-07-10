@@ -1,0 +1,63 @@
+name: Terraform Plan Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/env/dev/**'
+      # - 'terraform/env/stg/**'
+      # - 'terraform/env/prod/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    strategy:
+      matrix:
+        include:
+          - environment: dev
+            role: 'arn:aws:iam::351049001406:role/GithubActionRole'
+          # - environment: stg
+          #   role: 'arn:aws:iam::351049001406:role/GithubActionRole'
+          # - environment: prod
+          #   role: 'arn:aws:iam::351049001406:role/GithubActionRole'
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ matrix.role }}
+          aws-region: us-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Initialize Terraform
+        run: |
+          cd terraform/env/${{ matrix.environment }}
+          terraform init
+
+      - name: Validate Terraform configuration
+        run: |
+          cd terraform/env/${{ matrix.environment }}
+          terraform validate
+
+      - name: Plan Terraform changes
+        id: plan
+        run: |
+          cd terraform/env/${{ matrix.environment }}
+          terraform plan -out=tfplan.binary
+      - name: Check for Terraform plan errors
+        if: failure()
+        run: |
+          echo "Terraform plan failed"
+          exit 1
