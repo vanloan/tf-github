@@ -3,7 +3,7 @@ terraform {
     # profile = "test"
     bucket  = "loanvt"
     region  = "us-west-2"
-    key     = "dev/terraform.tfstate"
+    key     = "stg/terraform.tfstate"
     encrypt = true
   }
 }
