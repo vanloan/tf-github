@@ -6,8 +6,6 @@ on:
       - main
     paths:
       - 'terraform/env/dev/**'
-      # - 'terraform/env/stg/**'
-      # - 'terraform/env/prod/**'
 
 permissions:
   id-token: write
@@ -20,8 +18,8 @@ jobs:
         include:
           - environment: dev
             role: 'arn:aws:iam::351049001406:role/GithubActionRole'
-          # - environment: stg
-          #   role: 'arn:aws:iam::351049001406:role/GithubActionRole'
+          - environment: stg
+            role: 'arn:aws:iam::351049001406:role/GithubActionRole'
           # - environment: prod
           #   role: 'arn:aws:iam::351049001406:role/GithubActionRole'
 
@@ -41,6 +39,18 @@ jobs:
         with:
           terraform_version: 1.8.5
 
+      - name: Check if environment has changes
+        id: check_changes
+        run: |
+          case "${{ matrix.environment }}" in
+            dev)
+              git diff --exit-code --quiet HEAD^ HEAD -- terraform/env/dev || echo "changes detected"
+              ;;
+            stg)
+              git diff --exit-code --quiet HEAD^ HEAD -- terraform/env/stg || echo "changes detected"
+              ;;
+          esac
+
       - name: Initialize Terraform
         run: |
           cd terraform/env/${{ matrix.environment }}
@@ -56,8 +66,3 @@ jobs:
         run: |
           cd terraform/env/${{ matrix.environment }}
           terraform plan -out=tfplan.binary
-      - name: Check for Terraform plan errors
-        if: failure()
-        run: |
-          echo "Terraform plan failed"
-          exit 1
