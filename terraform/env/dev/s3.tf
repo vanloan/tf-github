@@ -1,6 +1,5 @@
 resource "aws_s3_bucket" "test" {
   bucket = "loanvt-test"
-  hdshd  = "fjdkf"
 }
 
 locals {
