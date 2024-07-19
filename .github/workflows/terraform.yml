@@ -49,6 +49,7 @@ jobs:
       - name: Fetch branches
         id: fetch_branches
         run: |
+          #!/bin/bash
           git fetch origin $DEFAULT_BRANCH
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             git fetch origin $FEATURE_BRANCH
@@ -59,13 +60,15 @@ jobs:
         id: create_temp_branch
         run: |
           #!/bin/bash
-          git checkout -b temp-branch
+          TEMP_BRANCH="temp-branch-$(uuidgen)"
+          git checkout -b $TEMP_BRANCH
           git fetch origin $DEFAULT_BRANCH
           git merge origin/$DEFAULT_BRANCH --no-commit --no-ff
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             git fetch origin $FEATURE_BRANCH
             git merge origin/$FEATURE_BRANCH --no-commit --no-ff
           fi
+          echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
         shell: bash
 
       - name: Check diff after merge
@@ -95,7 +98,7 @@ jobs:
         run: |
           #!/bin/bash
           git checkout main
-          git branch -D temp-branch
+          git branch -D $TEMP_BRANCH
         shell: bash
 
 
