@@ -22,6 +22,8 @@ permissions:
 jobs:
   git_diff:
     runs-on: ubuntu-latest
+    env:
+      DEFAULT_BRANCH: main
     outputs:
       changes: ${{ steps.git_diff.outputs.changes }}
 
@@ -36,10 +38,8 @@ jobs:
         run: |
           #!/bin/bash
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            DEFAULT_BRANCH="main"
             FEATURE_BRANCH="${{ github.event.pull_request.head.ref }}"
           elif [ "${{ github.event_name }}" == "push" ]; then
-            DEFAULT_BRANCH="main"
             FEATURE_BRANCH="HEAD"
           fi
           echo "DEFAULT_BRANCH=$DEFAULT_BRANCH" >> $GITHUB_ENV
@@ -60,10 +60,13 @@ jobs:
         id: create_temp_branch
         run: |
           #!/bin/bash
+
           TEMP_BRANCH="temp-branch-$(uuidgen)"
+
           git checkout -b $TEMP_BRANCH
           git fetch origin $DEFAULT_BRANCH
           git merge origin/$DEFAULT_BRANCH --no-commit --no-ff
+
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             git fetch origin $FEATURE_BRANCH
             git merge origin/$FEATURE_BRANCH --no-commit --no-ff
@@ -75,11 +78,12 @@ jobs:
         id: git_diff
         run: |
           #!/bin/bash
+
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             CHANGED_DIRS=$(git diff --name-only origin/$DEFAULT_BRANCH...origin/$FEATURE_BRANCH | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           elif [ "${{ github.event_name }}" == "push" ]; then
-            PREVIOUS_COMMIT=$(git log main --merges -n 2 --format=format:%H | tail -n 1)
-            RECENT_COMMIT=$(git log main --merges -n 1 --format=format:%H)
+            PREVIOUS_COMMIT=$(git log $DEFAULT_BRANCH --merges -n 2 --format=format:%H | tail -n 1)
+            RECENT_COMMIT=$(git log $DEFAULT_BRANCH --merges -n 1 --format=format:%H)
             CHANGED_DIRS=$(git diff --name-only $PREVIOUS_COMMIT $RECENT_COMMIT | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           fi
 
@@ -97,10 +101,9 @@ jobs:
         id: clean_up
         run: |
           #!/bin/bash
-          git checkout main
+          git checkout $DEFAULT_BRANCH
           git branch -D $TEMP_BRANCH
         shell: bash
-
 
   dev_environment:
     needs: git_diff
