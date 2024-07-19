@@ -44,14 +44,29 @@ jobs:
           fi
           echo "DEFAULT_BRANCH=$DEFAULT_BRANCH" >> $GITHUB_ENV
           echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
+        shell: bash
 
       - name: Fetch branches
         id: fetch_branches
         run: |
-          git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH
+          git fetch origin $DEFAULT_BRANCH
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            git fetch origin $FEATURE_BRANCH:$FEATURE_BRANCH
+            git fetch origin $FEATURE_BRANCH
           fi
+        shell: bash
+
+      - name: Create temporary branch for comparison
+        id: create_temp_branch
+        run: |
+          #!/bin/bash
+          git checkout -b temp-branch
+          git fetch origin $DEFAULT_BRANCH
+          git merge origin/$DEFAULT_BRANCH --no-commit --no-ff
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin $FEATURE_BRANCH
+            git merge origin/$FEATURE_BRANCH --no-commit --no-ff
+          fi
+        shell: bash
 
       - name: Check diff after merge
         id: git_diff
@@ -73,6 +88,16 @@ jobs:
             echo "No changes detected in Terraform directories."
             echo "changes=" >> $GITHUB_OUTPUT
           fi
+        shell: bash
+
+      - name: Clean up
+        id: clean_up
+        run: |
+          #!/bin/bash
+          git checkout main
+          git branch -D temp-branch
+        shell: bash
+
 
   dev_environment:
     needs: git_diff
