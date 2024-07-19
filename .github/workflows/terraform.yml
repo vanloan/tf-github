@@ -42,11 +42,11 @@ jobs:
         run: |
           echo "Checking diff between $DEFAULT_BRANCH and $FEATURE_BRANCH"
 
-          git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH
-          git fetch origin $FEATURE_BRANCH:$FEATURE_BRANCH
+          git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH-temp
+          git fetch origin $FEATURE_BRANCH:$FEATURE_BRANCH-temp
 
           git checkout $DEFAULT_BRANCH
-          git merge --no-commit --no-ff $FEATURE_BRANCH
+          git merge --no-commit --no-ff $FEATURE_BRANCH-temp
 
           CHANGED_DIRS=$(git diff --name-only HEAD~1 | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           
