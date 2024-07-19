@@ -36,6 +36,9 @@ jobs:
 
       - name: Fetch branches
         run: |
+          git config --global user.email "vanloan206@gmail.com"
+          git config --global user.name "vanloan"
+
           git fetch origin $DEFAULT_BRANCH
           git fetch origin $FEATURE_BRANCH
 
