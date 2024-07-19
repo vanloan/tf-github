@@ -1,68 +1,165 @@
 name: Terraform Plan Check
 
+env:
+  AWS_REGION: us-west-2
+  DEV_ROLE: arn:aws:iam::351049001406:role/GithubActionRole
+  STG_ROLE: arn:aws:iam::351049001406:role/GithubActionRole
+  PROD_ROLE: arn:aws:iam::351049001406:role/GithubActionRole
+  TF_DIR: terraform/env
+
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'terraform/env/dev/**'
+  push:
+    branches:
+      - main
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  terraform:
-    strategy:
-      matrix:
-        include:
-          - environment: dev
-            role: 'arn:aws:iam::351049001406:role/GithubActionRole'
-          - environment: stg
-            role: 'arn:aws:iam::351049001406:role/GithubActionRole'
-          # - environment: prod
-          #   role: 'arn:aws:iam::351049001406:role/GithubActionRole'
-
+  git_diff:
     runs-on: ubuntu-latest
+    env:
+      DEFAULT_BRANCH: main
+      FEATURE_BRANCH: "${{ github.event.pull_request.head.ref }}"
+    outputs:
+      changes: "${{ steps.git_diff.outputs.changes }}"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: configure aws credentials
+      - name: Configure Git
+        run: |
+          git config --global user.email "vanloan206@gmail.com"
+          git config --global user.name "vanloan206"
+
+      - name: Check diff between branches
+        id: git_diff
+        run: |
+          echo "Checking diff between $DEFAULT_BRANCH and $FEATURE_BRANCH"
+
+          git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH
+          git fetch origin $FEATURE_BRANCH:$FEATURE_BRANCH
+
+          git checkout $DEFAULT_BRANCH
+          git merge --no-commit --no-ff $FEATURE_BRANCH
+
+          CHANGED_DIRS=$(git diff --name-only HEAD~1 | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
+          
+          if [ -n "$CHANGED_DIRS" ]; then
+            echo "Changes detected in the following directories:"
+            echo "$CHANGED_DIRS"
+            echo "changes=$CHANGED_DIRS" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected in Terraform directories."
+            echo "changes=" >> $GITHUB_OUTPUT
+          fi
+
+  dev_environment:
+    needs: git_diff
+    if: contains(needs.git_diff.outputs.changes, 'dev')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ matrix.role }}
-          aws-region: us-west-2
+          role-to-assume: "${{ env.DEV_ROLE }}"
+          aws-region: "${{ env.AWS_REGION }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
 
-      - name: Check if environment has changes
-        id: check_changes
-        run: |
-          case "${{ matrix.environment }}" in
-            dev)
-              git diff --exit-code --quiet HEAD^ HEAD -- terraform/env/dev || echo "changes detected"
-              ;;
-            stg)
-              git diff --exit-code --quiet HEAD^ HEAD -- terraform/env/stg || echo "changes detected"
-              ;;
-          esac
-
       - name: Initialize Terraform
         run: |
-          cd terraform/env/${{ matrix.environment }}
+          cd ${{ env.TF_DIR }}/dev
           terraform init
 
       - name: Validate Terraform configuration
         run: |
-          cd terraform/env/${{ matrix.environment }}
+          cd ${{ env.TF_DIR }}/dev
           terraform validate
 
       - name: Plan Terraform changes
-        id: plan
         run: |
-          cd terraform/env/${{ matrix.environment }}
+          cd ${{ env.TF_DIR }}/dev
+          terraform plan -out=tfplan.binary
+
+  stg_environment:
+    needs: git_diff
+    if: contains(needs.git_diff.outputs.changes, 'stg')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ env.STG_ROLE }}"
+          aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Initialize Terraform
+        run: |
+          cd ${{ env.TF_DIR }}/stg
+          terraform init
+
+      - name: Validate Terraform configuration
+        run: |
+          cd ${{ env.TF_DIR }}/stg
+          terraform validate
+
+      - name: Plan Terraform changes
+        run: |
+          cd ${{ env.TF_DIR }}/stg
+          terraform plan -out=tfplan.binary
+
+  prod_environment:
+    needs: git_diff
+    if: contains(needs.git_diff.outputs.changes, 'prod')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ env.PROD_ROLE }}"
+          aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Initialize Terraform
+        run: |
+          cd ${{ env.TF_DIR }}/prod
+          terraform init
+
+      - name: Validate Terraform configuration
+        run: |
+          cd ${{ env.TF_DIR }}/prod
+          terraform validate
+
+      - name: Plan Terraform changes
+        run: |
+          cd ${{ env.TF_DIR }}/prod
           terraform plan -out=tfplan.binary
