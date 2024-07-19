@@ -36,6 +36,9 @@ jobs:
         run: |
           git config --global user.email "vanloan206@gmail.com"
           git config --global user.name "vanloan206"
+      
+      - name: Set FEATURE_BRANCH environment variable
+        run: echo "FEATURE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
 
       - name: Check diff between branches
         id: git_diff
@@ -46,6 +49,7 @@ jobs:
           git fetch origin $FEATURE_BRANCH:$FEATURE_BRANCH-temp
 
           git checkout $DEFAULT_BRANCH
+
           git merge --no-commit --no-ff $FEATURE_BRANCH-temp
 
           CHANGED_DIRS=$(git diff --name-only HEAD~1 | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
