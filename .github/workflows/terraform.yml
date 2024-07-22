@@ -56,24 +56,6 @@ jobs:
           fi
         shell: bash
 
-      - name: Create temporary branch for comparison
-        id: create_temp_branch
-        run: |
-          #!/bin/bash
-
-          TEMP_BRANCH="temp-branch-$(uuidgen)"
-
-          git checkout -b $TEMP_BRANCH
-          git fetch origin $DEFAULT_BRANCH
-          git merge origin/$DEFAULT_BRANCH --no-commit --no-ff
-
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            git fetch origin $FEATURE_BRANCH
-            git merge origin/$FEATURE_BRANCH --no-commit --no-ff
-          fi
-          echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
-        shell: bash
-
       - name: Check diff after merge
         id: git_diff
         run: |
@@ -100,9 +82,7 @@ jobs:
       - name: Clean up
         id: clean_up
         run: |
-          #!/bin/bash
           git checkout $DEFAULT_BRANCH
-          git branch -D $TEMP_BRANCH
         shell: bash
 
   dev_environment:
