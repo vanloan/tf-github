@@ -62,13 +62,11 @@ jobs:
           #!/bin/bash
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo 1
-            CHANGED_DIRS=$(git diff --name-only origin/$DEFAULT_BRANCH...origin/$FEATURE_BRANCH | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
+            CHANGED_DIRS=$(git diff --name-only origin/$DEFAULT_BRANCH...origin/$FEATURE_BRANCH | grep '^${{ env.TF_DIR }}/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           elif [ "${{ github.event_name }}" == "push" ]; then
-            echo 2
             PREVIOUS_COMMIT=$(git log $DEFAULT_BRANCH --merges -n 2 --format=format:%H | tail -n 1)
             RECENT_COMMIT=$(git log $DEFAULT_BRANCH --merges -n 1 --format=format:%H)
-            CHANGED_DIRS=$(git diff --name-only $PREVIOUS_COMMIT $RECENT_COMMIT | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
+            CHANGED_DIRS=$(git diff --name-only $PREVIOUS_COMMIT $RECENT_COMMIT | grep '^${{ env.TF_DIR }}/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           fi
 
           if [ -n $CHANGED_DIRS ]; then
@@ -91,6 +89,8 @@ jobs:
     needs: git_diff
     if: contains(needs.git_diff.outputs.changes, 'dev')
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: dev
 
     steps:
       - name: Checkout code
@@ -101,10 +101,10 @@ jobs:
         with:
           role-to-assume: "${{ env.DEV_ROLE }}"
           aws-region: "${{ env.AWS_REGION }}"
-      
+
       - name: Read .terraform-version
         id: read_version
-        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/dev/.terraform-version)" >> $GITHUB_ENV
+        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}/.terraform-version)" >> $GITHUB_ENV
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -113,23 +113,25 @@ jobs:
 
       - name: Initialize Terraform
         run: |
-          cd ${{ env.TF_DIR }}/dev
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform init
 
       - name: Validate Terraform configuration
         run: |
-          cd ${{ env.TF_DIR }}/dev
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform validate
 
       - name: Plan Terraform changes
         run: |
-          cd ${{ env.TF_DIR }}/dev
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform plan -out=tfplan.binary
 
   stg_environment:
     needs: git_diff
     if: contains(needs.git_diff.outputs.changes, 'stg')
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: stg
 
     steps:
       - name: Checkout code
@@ -143,37 +145,34 @@ jobs:
 
       - name: Read .terraform-version
         id: read_version
-        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/stg/.terraform-version)" >> $GITHUB_ENV
+        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}/.terraform-version)" >> $GITHUB_ENV
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
-
       - name: Initialize Terraform
         run: |
-          cd ${{ env.TF_DIR }}/stg
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform init
 
       - name: Validate Terraform configuration
         run: |
-          cd ${{ env.TF_DIR }}/stg
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform validate
 
       - name: Plan Terraform changes
         run: |
-          cd ${{ env.TF_DIR }}/stg
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform plan -out=tfplan.binary
 
   prod_environment:
     needs: git_diff
     if: contains(needs.git_diff.outputs.changes, 'prod')
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: prod
 
     steps:
       - name: Checkout code
@@ -187,7 +186,7 @@ jobs:
 
       - name: Read .terraform-version
         id: read_version
-        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/prod/.terraform-version)" >> $GITHUB_ENV
+        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}/.terraform-version)" >> $GITHUB_ENV
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -196,15 +195,15 @@ jobs:
 
       - name: Initialize Terraform
         run: |
-          cd ${{ env.TF_DIR }}/prod
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform init
 
       - name: Validate Terraform configuration
         run: |
-          cd ${{ env.TF_DIR }}/prod
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform validate
 
       - name: Plan Terraform changes
         run: |
-          cd ${{ env.TF_DIR }}/prod
+          cd ${{ env.TF_DIR }}/${{ env.ENVIRONMENT }}
           terraform plan -out=tfplan.binary
