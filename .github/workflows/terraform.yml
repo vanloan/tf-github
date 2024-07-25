@@ -62,14 +62,16 @@ jobs:
           #!/bin/bash
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo 1
             CHANGED_DIRS=$(git diff --name-only origin/$DEFAULT_BRANCH...origin/$FEATURE_BRANCH | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           elif [ "${{ github.event_name }}" == "push" ]; then
+            echo 2
             PREVIOUS_COMMIT=$(git log $DEFAULT_BRANCH --merges -n 2 --format=format:%H | tail -n 1)
             RECENT_COMMIT=$(git log $DEFAULT_BRANCH --merges -n 1 --format=format:%H)
             CHANGED_DIRS=$(git diff --name-only $PREVIOUS_COMMIT $RECENT_COMMIT | grep '^terraform/env/' | cut -d '/' -f 3 | sort -u | tr '\n' ' ' || true)
           fi
 
-          if [ -n "$CHANGED_DIRS" ]; then
+          if [ -n $CHANGED_DIRS ]; then
             echo "Changes detected in the following directories:"
             echo "$CHANGED_DIRS"
             echo "changes=$CHANGED_DIRS" >> $GITHUB_OUTPUT

@@ -1,6 +1,6 @@
-# resource "aws_s3_bucket" "test" {
-#   bucket = "loanvt-test"
-# }
+resource "aws_s3_bucket" "test" {
+  bucket = "loanvt-test"
+}
 
 locals {
   environment = "dev"
