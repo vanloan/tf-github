@@ -56,24 +56,6 @@ jobs:
           fi
         shell: bash
 
-      - name: Create temporary branch for comparison
-        id: create_temp_branch
-        run: |
-          #!/bin/bash
-
-          TEMP_BRANCH="temp-branch-$(uuidgen)"
-
-          git checkout -b $TEMP_BRANCH
-          git fetch origin $DEFAULT_BRANCH
-          git merge origin/$DEFAULT_BRANCH --no-commit --no-ff
-
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            git fetch origin $FEATURE_BRANCH
-            git merge origin/$FEATURE_BRANCH --no-commit --no-ff
-          fi
-          echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
-        shell: bash
-
       - name: Check diff after merge
         id: git_diff
         run: |
@@ -100,9 +82,7 @@ jobs:
       - name: Clean up
         id: clean_up
         run: |
-          #!/bin/bash
           git checkout $DEFAULT_BRANCH
-          git branch -D $TEMP_BRANCH
         shell: bash
 
   dev_environment:
@@ -119,11 +99,15 @@ jobs:
         with:
           role-to-assume: "${{ env.DEV_ROLE }}"
           aws-region: "${{ env.AWS_REGION }}"
+      
+      - name: Read .terraform-version
+        id: read_version
+        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/dev/.terraform-version)" >> $GITHUB_ENV
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.8.5
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Initialize Terraform
         run: |
@@ -154,6 +138,15 @@ jobs:
         with:
           role-to-assume: "${{ env.STG_ROLE }}"
           aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Read .terraform-version
+        id: read_version
+        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/stg/.terraform-version)" >> $GITHUB_ENV
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -190,10 +183,14 @@ jobs:
           role-to-assume: "${{ env.PROD_ROLE }}"
           aws-region: "${{ env.AWS_REGION }}"
 
+      - name: Read .terraform-version
+        id: read_version
+        run: echo "TERRAFORM_VERSION=$(cat ${{ env.TF_DIR }}/prod/.terraform-version)" >> $GITHUB_ENV
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.8.5
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Initialize Terraform
         run: |
