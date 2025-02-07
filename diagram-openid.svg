@@ -41,7 +41,7 @@
 <!-- GitHub Actions -->
 <g id="node3" class="node">
 <title>GitHub Actions</title>
-<image xlink:href="../../icons/common/github-mark.png" width="64px" height="64px" preserveAspectRatio="xMinYMin meet" x="95.3285" y="-155.775"/>
+<image xlink:href="github-mark.png" width="64px" height="64px" preserveAspectRatio="xMinYMin meet" x="95.3285" y="-155.775"/>
 <text text-anchor="middle" x="127.33" y="-77.67" font-family="Arial" font-size="14.00">GitHub Actions</text>
 </g>
 <!-- GitHub Actions&#45;&gt;OIDC Provider -->
