@@ -3,8 +3,6 @@ resource "aws_s3_bucket" "test" {
 }
 
 locals {
-  environment = "dev"
-
   github_repo = [
     "repo:vanloan/tf-github:*"
   ]
