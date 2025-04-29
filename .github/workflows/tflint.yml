@@ -9,6 +9,11 @@ on:
 jobs:
   tflint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env:
+          - terraform/env/dev
+          - terraform/env/stg
 
     steps:
       - name: Checkout code
@@ -21,14 +26,14 @@ jobs:
 
       - name: Show TFLint version
         run: tflint --version
-        working-directory: terraform/env/dev
+        working-directory: ${{ matrix.env }}
 
-      - name: Initialize TFLint plugins (with GitHub token)
+      - name: Initialize TFLint plugins
         run: tflint --init
-        working-directory: terraform/env/dev
+        working-directory: ${{ matrix.env }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TFLint
         run: tflint -f compact
-        working-directory: terraform/env/dev
+        working-directory: ${{ matrix.env }}
