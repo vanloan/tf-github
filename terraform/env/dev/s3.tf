@@ -3,17 +3,9 @@ resource "aws_s3_bucket" "test" {
 }
 
 locals {
-  environment = "dev"
-
   github_repo = [
     "repo:vanloan/tf-github:*"
   ]
-
-  infra_tags = {
-    Product     = "infra"
-    Application = "infra"
-    Environment = local.environment
-  }
 }
 
 data "tls_certificate" "github" {
