@@ -1,0 +1,34 @@
+name: TFLint Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  tflint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.52.0
+
+      - name: Show TFLint version
+        run: tflint --version
+        working-directory: terraform/env/dev
+
+      - name: Initialize TFLint plugins (with GitHub token)
+        run: tflint --init
+        working-directory: terraform/env/dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TFLint
+        run: tflint -f compact
+        working-directory: terraform/env/dev
